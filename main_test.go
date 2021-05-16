@@ -48,7 +48,7 @@ func TestFormatGetUrl(t *testing.T) {
 	testData := []testCase{
 		{
 			"fireball system=dnd level: 100",
-			"fakeurl/spell/fireball?level=100&system=dnd",
+			"fakeurl/spells/fireball?level=100&system=dnd",
 		},
 	}
 
