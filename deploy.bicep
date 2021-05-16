@@ -1,4 +1,4 @@
-param containerName string = 'spellapi.discord'
+param containerName string = 'spellapi-discord'
 param containerVersion string = 'main'
 
 @secure()
@@ -65,8 +65,18 @@ resource bot_aci 'Microsoft.ContainerInstance/containerGroups@2018-10-01' = {
     ]
     restartPolicy: 'OnFailure'
     ipAddress: {
+      ports: [
+        {
+          protocol: 'TCP'
+          port: 80
+        }
+      ]
+      ip: '10.0.0.4'
       type: 'Private'
     }
     osType: 'Linux'
+    networkProfile: {
+      id: resourceId('Microsoft.Network/networkProfiles', 'spellapi-discord-networkProfile')
+    }
   }
 }
