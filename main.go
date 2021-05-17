@@ -27,7 +27,6 @@ func main() {
 	beeline.Init(beeline.Config{
 		WriteKey: os.Getenv("HONEYCOMB_KEY"),
 		Dataset:  os.Getenv("HONEYCOMB_DATASET"),
-		STDOUT:   true,
 	})
 
 	defer beeline.Close()
