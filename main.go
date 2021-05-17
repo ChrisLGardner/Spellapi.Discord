@@ -11,11 +11,13 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/ChrisLGardner/Spellapi.Discord/hnydiscordgo"
 	"github.com/bwmarrin/discordgo"
 	"github.com/honeycombio/beeline-go"
 	"github.com/honeycombio/beeline-go/trace"
+	"github.com/honeycombio/beeline-go/wrappers/hnynethttp"
 )
 
 var apiUrl string
@@ -140,7 +142,13 @@ func getSpell(ctx context.Context, s string) (Spell, error) {
 	defer span.Send()
 
 	getUrl := formatGetUrl(ctx, s)
-	resp, err := http.Get(getUrl)
+
+	client := &http.Client{
+		Transport: hnynethttp.WrapRoundTripper(http.DefaultTransport),
+		Timeout:   time.Second * 5,
+	}
+	req, _ := http.NewRequest("GET", getUrl, nil)
+	resp, err := client.Do(req)
 	if err != nil {
 		beeline.AddField(ctx, "error", err)
 		return Spell{}, err
