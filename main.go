@@ -70,6 +70,7 @@ func MessageRespond(s *discordgo.Session, m *discordgo.MessageCreate) {
 	me := hnydiscordgo.MessageEvent{Message: m.Message, Context: ctx}
 
 	ctx, span = hnydiscordgo.StartSpanOrTraceFromMessage(&me, s)
+	defer span.Send()
 
 	m.Content = strings.Replace(m.Content, "!", "", 1)
 	span.AddField("name", "MessageRespond")
