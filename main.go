@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -95,13 +96,22 @@ func MessageRespond(s *discordgo.Session, m *discordgo.MessageCreate) {
 	} else if command == "spell" {
 		beeline.AddField(ctx, "command", "help")
 
-		resp, err := getSpell(ctx, m.Content)
-		if err != nil {
-			beeline.AddField(ctx, "error", err)
-			sendResponse(ctx, s, m.ChannelID, "Spell not found")
-		}
+		if m.Content == "add" {
+			resp, err := createSpell(ctx, m.Message)
+			if err != nil {
+				beeline.AddField(ctx, "error", err)
+				sendResponse(ctx, s, m.ChannelID, "Spell not found")
+			}
+			sendResponse(ctx, s, m.ChannelID, resp)
+		} else {
+			resp, err := getSpell(ctx, m.Content)
+			if err != nil {
+				beeline.AddField(ctx, "error", err)
+				sendResponse(ctx, s, m.ChannelID, "Spell not found")
+			}
 
-		sendSpell(ctx, s, m.ChannelID, resp)
+			sendSpell(ctx, s, m.ChannelID, resp)
+		}
 	}
 }
 
@@ -150,7 +160,7 @@ func getSpell(ctx context.Context, s string) (Spell, error) {
 		Transport: hnynethttp.WrapRoundTripper(http.DefaultTransport),
 		Timeout:   time.Second * 5,
 	}
-	req, _ := http.NewRequest("GET", getUrl, nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", getUrl, nil)
 	resp, err := client.Do(req)
 	if err != nil {
 		beeline.AddField(ctx, "error", err)
@@ -249,4 +259,43 @@ func formatSpellEmbed(ctx context.Context, spell Spell) *discordgo.MessageEmbed 
 	}
 
 	return &spellEmbed
+}
+
+func createSpell(ctx context.Context, message *discordgo.Message) (string, error) {
+
+	ctx, span := beeline.StartSpan(ctx, "createSpell")
+	defer span.Send()
+
+	beeline.AddField(ctx, "createSpell.Attachment.Url", message.Attachments[0].URL)
+	beeline.AddField(ctx, "createSpell.Attachment.Filename", message.Attachments[0].Filename)
+
+	client := &http.Client{
+		Transport: hnynethttp.WrapRoundTripper(http.DefaultTransport),
+		Timeout:   time.Second * 20,
+	}
+	getReq, _ := http.NewRequestWithContext(ctx, "GET", message.Attachments[0].URL, nil)
+	resp, err := client.Do(getReq)
+	if err != nil {
+		beeline.AddField(ctx, "createSpell.Error", err)
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	postUrl := fmt.Sprintf("%s/spells", apiUrl)
+
+	postReq, _ := http.NewRequestWithContext(ctx, "POST", postUrl, resp.Body)
+	postResp, err := client.Do(postReq)
+	if err != nil {
+		beeline.AddField(ctx, "createSpell.Error", err)
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	parsedResp, err := io.ReadAll(postResp.Body)
+	if err != nil {
+		beeline.AddField(ctx, "createSpell.Error", err)
+		return "", err
+	}
+
+	return string(parsedResp), nil
 }
