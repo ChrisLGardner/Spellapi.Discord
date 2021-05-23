@@ -72,7 +72,7 @@ func MessageRespond(s *discordgo.Session, m *discordgo.MessageCreate) {
 	ctx, span = hnydiscordgo.StartSpanOrTraceFromMessage(&me, s)
 	defer span.Send()
 
-	m.Content = strings.Replace(m.Content, "!", "", 1)
+	m.Content = strings.Replace(m.Content, "?", "", 1)
 	span.AddField("name", "MessageRespond")
 
 	split := strings.SplitAfterN(m.Content, " ", 2)
@@ -87,6 +87,9 @@ func MessageRespond(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if command == "help" {
 		beeline.AddField(ctx, "command", "help")
 		help := `Commands available:
+		?spell <Spell Name> - Finds the spell specified if possible.
+			when there are multiple spells matching you can narrow it down
+			using filters like "system=dnd" or "level: 2"
 		`
 		sendResponse(ctx, s, m.ChannelID, help)
 	} else if command == "spell" {
