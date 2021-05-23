@@ -61,7 +61,7 @@ func MessageRespond(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	if !strings.HasPrefix(m.Content, "!") {
+	if !strings.HasPrefix(m.Content, "?") {
 		return
 	}
 
