@@ -185,11 +185,13 @@ func formatGetUrl(ctx context.Context, s string) string {
 	ctx, span := beeline.StartSpan(ctx, "formatGetUrl")
 	defer span.Send()
 
-	uri := fmt.Sprintf("%s/spells/", apiUrl)
+	uri := fmt.Sprintf("%s/spells", apiUrl)
 
 	s, queryParameters := parseQuery(ctx, s)
 
-	uri = fmt.Sprintf("%s%s", uri, s)
+	if s != "" {
+		uri = fmt.Sprintf("%s/%s", uri, s)
+	}
 
 	params := url.Values{}
 	for k, v := range queryParameters {
