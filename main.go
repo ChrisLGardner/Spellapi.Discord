@@ -126,16 +126,17 @@ func sendResponse(ctx context.Context, s *discordgo.Session, cid string, m strin
 
 }
 
-func sendSpell(ctx context.Context, s *discordgo.Session, cid string, spell Spell) {
+func sendSpell(ctx context.Context, s *discordgo.Session, cid string, spell []Spell) {
 
 	ctx, span := beeline.StartSpan(ctx, "sendSpell")
 	defer span.Send()
 	beeline.AddField(ctx, "spell", spell)
 	beeline.AddField(ctx, "channel", cid)
+	for _, indivSpell := range spell {
+		spellEmbed := formatSpellEmbed(ctx, indivSpell)
 
-	spellEmbed := formatSpellEmbed(ctx, spell)
-
-	s.ChannelMessageSendEmbed(cid, spellEmbed)
+		s.ChannelMessageSendEmbed(cid, spellEmbed)
+	}
 
 }
 
@@ -149,7 +150,7 @@ type SpellMetadata struct {
 	System string `json:"system" bson:"system"`
 }
 
-func getSpell(ctx context.Context, s string) (Spell, error) {
+func getSpell(ctx context.Context, s string) ([]Spell, error) {
 
 	ctx, span := beeline.StartSpan(ctx, "getSpell")
 	defer span.Send()
@@ -164,16 +165,16 @@ func getSpell(ctx context.Context, s string) (Spell, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		beeline.AddField(ctx, "error", err)
-		return Spell{}, err
+		return []Spell{}, err
 	}
 	defer resp.Body.Close()
 
-	var spell Spell
+	var spell []Spell
 
 	err = json.NewDecoder(resp.Body).Decode(&spell)
 	if err != nil {
 		beeline.AddField(ctx, "error", err)
-		return Spell{}, err
+		return []Spell{}, err
 	}
 
 	beeline.AddField(ctx, "response", spell)
