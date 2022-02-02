@@ -173,8 +173,15 @@ func getSpell(ctx context.Context, s string) ([]Spell, error) {
 
 	err = json.NewDecoder(resp.Body).Decode(&spell)
 	if err != nil {
-		beeline.AddField(ctx, "error", err)
-		return []Spell{}, err
+		var singleSpell Spell
+		err = json.NewDecoder(resp.Body).Decode(&singleSpell)
+
+		if err != nil {
+			beeline.AddField(ctx, "error", err)
+			return []Spell{}, err
+		}
+		beeline.AddField(ctx, "response", singleSpell)
+		return []Spell{singleSpell}, nil
 	}
 
 	beeline.AddField(ctx, "response", spell)
