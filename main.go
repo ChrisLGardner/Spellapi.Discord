@@ -91,6 +91,10 @@ func MessageRespond(s *discordgo.Session, m *discordgo.MessageCreate) {
 		?spell <Spell Name> - Finds the spell specified if possible.
 			when there are multiple spells matching you can narrow it down
 			using filters like "system=dnd" or "level: 2"
+		?spell add - Requires an attachment to have been added to the message.
+			will upload the attachment to the backend and make it searchable.
+			See https://github.com/ChrisLGardner/Spellapi.Discord for the format
+			of the attachment.
 		`
 		sendResponse(ctx, s, m.ChannelID, help)
 	} else if command == "spell" {
