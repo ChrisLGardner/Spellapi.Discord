@@ -64,3 +64,54 @@ func TestFormatGetUrl(t *testing.T) {
 		}
 	}
 }
+
+func TestSpellResponse_UnmarshalJSON(t *testing.T) {
+	type fields struct {
+		Spell []Spell
+	}
+	type args struct {
+		b []byte
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name:   "valid single spell response data",
+			fields: fields{Spell: []Spell{{Name: "fireball", Description: "Does the Big Boom"}}},
+			args: args{b: []byte(`{
+				"name": "Fireball",
+				"description": "Does the Big Boom"	
+			}`)},
+			wantErr: false,
+		},
+		{
+			name:   "valid multiple spell response data",
+			fields: fields{Spell: []Spell{{Name: "fireball", Description: "Does the Big Boom"}, {Name: "fireball 2", Description: "Does the other Big Boom"}}},
+			args: args{b: []byte(`[
+				{
+					"name": "Fireball",
+					"description": "Does the Big Boom"	
+				},
+				{
+					"name": "Fireball 2",
+					"description": "Does the other Big Boom"	
+				}
+			]
+			`)},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sr := &SpellResponse{
+				Spell: tt.fields.Spell,
+			}
+			if err := sr.UnmarshalJSON(tt.args.b); (err != nil) != tt.wantErr {
+				t.Errorf("SpellResponse.UnmarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

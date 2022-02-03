@@ -150,6 +150,50 @@ type SpellMetadata struct {
 	System string `json:"system" bson:"system"`
 }
 
+type SpellResponse struct {
+	Spell []Spell
+}
+
+func (sr *SpellResponse) UnmarshalJSON(b []byte) error {
+	if len(b) == 0 {
+		return fmt.Errorf("no bytes to unmarshal")
+	}
+	// See if we can guess based on the first character
+	switch b[0] {
+	case '{':
+		return sr.unmarshalSingle(b)
+	case '[':
+		return sr.unmarshalMany(b)
+	}
+	// TODO: Figure out what do we do here
+	return nil
+
+}
+
+func (sr *SpellResponse) unmarshalSingle(b []byte) error {
+	var s Spell
+
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+
+	sr.Spell = []Spell{s}
+	return nil
+}
+
+func (sr *SpellResponse) unmarshalMany(b []byte) error {
+	var s []Spell
+
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+
+	sr.Spell = s
+	return nil
+}
+
 func getSpell(ctx context.Context, s string) ([]Spell, error) {
 
 	ctx, span := beeline.StartSpan(ctx, "getSpell")
@@ -169,24 +213,18 @@ func getSpell(ctx context.Context, s string) ([]Spell, error) {
 	}
 	defer resp.Body.Close()
 
-	var spell []Spell
+	var spellResponse SpellResponse
 
-	err = json.NewDecoder(resp.Body).Decode(&spell)
+	err = json.NewDecoder(resp.Body).Decode(&spellResponse)
 	if err != nil {
-		var singleSpell Spell
-		err = json.NewDecoder(resp.Body).Decode(&singleSpell)
 
-		if err != nil {
-			beeline.AddField(ctx, "error", err)
-			return []Spell{}, err
-		}
-		beeline.AddField(ctx, "response", singleSpell)
-		return []Spell{singleSpell}, nil
+		beeline.AddField(ctx, "error", err)
+		return []Spell{}, err
 	}
 
-	beeline.AddField(ctx, "response", spell)
+	beeline.AddField(ctx, "response", spellResponse.Spell)
 
-	return spell, nil
+	return spellResponse.Spell, nil
 }
 
 func formatGetUrl(ctx context.Context, s string) string {
