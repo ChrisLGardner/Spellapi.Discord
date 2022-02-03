@@ -144,10 +144,12 @@ func sendSpell(ctx context.Context, s *discordgo.Session, cid string, spell []Sp
 		}
 	} else {
 		var sb strings.Builder
-		sb.WriteString("Spell Name : System\n")
+		sb.WriteString("**Spell Name** | **System**\n")
+		sb.WriteString("```")
 		for _, indivSpell := range spell {
-			sb.WriteString(fmt.Sprintf("%s : %s\n", indivSpell.Name, indivSpell.Metadata.System))
+			sb.WriteString(fmt.Sprintf("%s | %s\n", indivSpell.Name, indivSpell.Metadata.System))
 		}
+		sb.WriteString("```")
 		s.ChannelMessageSend(cid, sb.String())
 	}
 
