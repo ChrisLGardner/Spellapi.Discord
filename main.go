@@ -136,10 +136,19 @@ func sendSpell(ctx context.Context, s *discordgo.Session, cid string, spell []Sp
 	defer span.Send()
 	beeline.AddField(ctx, "spell", spell)
 	beeline.AddField(ctx, "channel", cid)
-	for _, indivSpell := range spell {
-		spellEmbed := formatSpellEmbed(ctx, indivSpell)
+	if len(spell) < 4 {
+		for _, indivSpell := range spell {
+			spellEmbed := formatSpellEmbed(ctx, indivSpell)
 
-		s.ChannelMessageSendEmbed(cid, spellEmbed)
+			s.ChannelMessageSendEmbed(cid, spellEmbed)
+		}
+	} else {
+		var sb strings.Builder
+		sb.WriteString("Spell Name : System\n")
+		for _, indivSpell := range spell {
+			sb.WriteString(fmt.Sprintf("%s : %s\n", indivSpell.Name, indivSpell.Metadata.System))
+		}
+		s.ChannelMessageSend(cid, sb.String())
 	}
 
 }
