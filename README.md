@@ -7,11 +7,24 @@ Discord bot for interacting with the spellapi api
 |-|-|
 |?help|displays the help information for all commands|
 |?spell `<spell name>`|Finds the spell specified if possible. when there are multiple spells matching you can narrow it down using filters like "system=dnd" or "level: 2"|
-|?spell add| Requires an attachment to have been added to the message. Will upload the attachment to the backend and make it searchable. See below for the format of the attachment.|
+|?spell add| Will add a new spell, either using the content of the message or via attachment. See below for the format of the message or attachment.|
 
 ## Spell Attachment format
 
-Spells added via the bot need to be done using a file attachment. This file needs to be in a JSON format and look like below:
+Spells added via the bot can be done either using the body of the message or using a file attachment.
+
+Message content should be in the following format:
+
+```
+name: Example Spell 6
+description: Target creature you can see falls prone and cannot act until after your next turn.
+spelldata:
+    level: 2
+metadata:
+    system: test1
+```
+
+File attachments can either be in the format above or using the JSON format below:
 
 ```
 {

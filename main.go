@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +21,7 @@ import (
 	"github.com/honeycombio/beeline-go"
 	"github.com/honeycombio/beeline-go/trace"
 	"github.com/honeycombio/beeline-go/wrappers/hnynethttp"
+	"gopkg.in/yaml.v3"
 )
 
 var apiUrl string
@@ -91,16 +94,15 @@ func MessageRespond(s *discordgo.Session, m *discordgo.MessageCreate) {
 		?spell <Spell Name> - Finds the spell specified if possible.
 			when there are multiple spells matching you can narrow it down
 			using filters like "system=dnd" or "level: 2"
-		?spell add - Requires an attachment to have been added to the message.
-			will upload the attachment to the backend and make it searchable.
-			See https://github.com/ChrisLGardner/Spellapi.Discord for the format
-			of the attachment.
+		?spell add - Will add a new spell, either using the content of the message or via attachment.
+			See https://github.com/ChrisLGardner/Spellapi.Discord for the format to be used.
 		`
 		sendResponse(ctx, s, m.ChannelID, help)
 	} else if command == "spell" {
 		beeline.AddField(ctx, "command", "help")
 
-		if m.Content == "add" {
+		if strings.HasPrefix(m.Content, "add") {
+			m.Content = strings.TrimPrefix(strings.TrimPrefix(m.Content, "add"), "\n")
 			resp, err := createSpell(ctx, m.Message)
 			if err != nil {
 				beeline.AddField(ctx, "error", err)
@@ -329,30 +331,61 @@ func createSpell(ctx context.Context, message *discordgo.Message) (string, error
 	ctx, span := beeline.StartSpan(ctx, "createSpell")
 	defer span.Send()
 
-	beeline.AddField(ctx, "createSpell.Attachment.Url", message.Attachments[0].URL)
-	beeline.AddField(ctx, "createSpell.Attachment.Filename", message.Attachments[0].Filename)
-
+	var spellRaw []byte
 	client := &http.Client{
 		Transport: hnynethttp.WrapRoundTripper(http.DefaultTransport),
 		Timeout:   time.Second * 20,
 	}
-	getReq, _ := http.NewRequestWithContext(ctx, "GET", message.Attachments[0].URL, nil)
-	resp, err := client.Do(getReq)
-	if err != nil {
-		beeline.AddField(ctx, "createSpell.Error", err)
-		return "", err
+
+	if len(message.Attachments) > 0 {
+
+		beeline.AddField(ctx, "createSpell.Attachment.Url", message.Attachments[0].URL)
+		beeline.AddField(ctx, "createSpell.Attachment.Filename", message.Attachments[0].Filename)
+
+		getReq, _ := http.NewRequestWithContext(ctx, "GET", message.Attachments[0].URL, nil)
+		resp, err := client.Do(getReq)
+		if err != nil {
+			beeline.AddField(ctx, "createSpell.Error", err)
+			return "", err
+		}
+		defer resp.Body.Close()
+
+		spellRaw, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			beeline.AddField(ctx, "createSpell.Attachment.Error", err)
+			return "", err
+		}
+
+	} else {
+		spellRaw = []byte(message.Content)
 	}
-	defer resp.Body.Close()
+
+	if spellRaw[0] != '{' {
+		temp := make(map[string]interface{})
+
+		err := yaml.Unmarshal(spellRaw, &temp)
+		if err != nil {
+			beeline.AddField(ctx, "createSpell.RawToYaml.Error", err)
+			return "", err
+		}
+
+		spellRaw, err = json.Marshal(temp)
+		if err != nil {
+			beeline.AddField(ctx, "createSpell.YamlToJson.Error", err)
+			return "", err
+		}
+	}
 
 	postUrl := fmt.Sprintf("%s/spells", apiUrl)
+	spell := bytes.NewReader(spellRaw)
 
-	postReq, _ := http.NewRequestWithContext(ctx, "POST", postUrl, resp.Body)
+	postReq, _ := http.NewRequestWithContext(ctx, "POST", postUrl, spell)
 	postResp, err := client.Do(postReq)
 	if err != nil {
 		beeline.AddField(ctx, "createSpell.Error", err)
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer postResp.Body.Close()
 
 	parsedResp, err := io.ReadAll(postResp.Body)
 	if err != nil {
