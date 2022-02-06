@@ -24,6 +24,14 @@ metadata:
     system: test1
 ```
 
+Description can support Markdown using the same format as Discord, it's recommended to limit usage to **bold**, _italics_ and other similar effects due to the limited space of the returned message. It can also support multiline using the following format:
+
+```
+description: |
+  This is a multiline description.
+  The pipe character is required.
+```
+
 File attachments can either be in the format above or using the JSON format below:
 
 ```
