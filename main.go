@@ -99,7 +99,7 @@ func MessageRespond(s *discordgo.Session, m *discordgo.MessageCreate) {
 		`
 		sendResponse(ctx, s, m.ChannelID, help)
 	} else if command == "spell" {
-		beeline.AddField(ctx, "command", "help")
+		beeline.AddField(ctx, "command", "spell")
 
 		if strings.HasPrefix(m.Content, "add") {
 			m.Content = strings.TrimPrefix(strings.TrimPrefix(m.Content, "add"), "\n")
@@ -117,6 +117,24 @@ func MessageRespond(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 
 			sendSpell(ctx, s, m.ChannelID, resp)
+		}
+	} else if command == "metadata" {
+		beeline.AddField(ctx, "command", "metadata")
+
+		if strings.TrimSpace(m.Content) != "metadata" {
+			resp, err := getSpellMetadataValues(ctx, m.Message)
+			if err != nil {
+				beeline.AddField(ctx, "error", err)
+				sendResponse(ctx, s, m.ChannelID, err.Error())
+			}
+			sendResponse(ctx, s, m.ChannelID, resp)
+		} else {
+			resp, err := getSpellMetadataNames(ctx, m.Message)
+			if err != nil {
+				beeline.AddField(ctx, "error", err)
+				sendResponse(ctx, s, m.ChannelID, err.Error())
+			}
+			sendResponse(ctx, s, m.ChannelID, resp)
 		}
 	}
 }
@@ -394,4 +412,88 @@ func createSpell(ctx context.Context, message *discordgo.Message) (string, error
 	}
 
 	return string(parsedResp), nil
+}
+
+func getSpellMetadataNames(ctx context.Context, m *discordgo.Message) (string, error) {
+	ctx, span := beeline.StartSpan(ctx, "getSpellMetadataNames")
+	defer span.Send()
+
+	client := &http.Client{
+		Transport: hnynethttp.WrapRoundTripper(http.DefaultTransport),
+		Timeout:   time.Second * 20,
+	}
+	Url := fmt.Sprintf("%s/spellmetadata", apiUrl)
+
+	getReq, _ := http.NewRequestWithContext(ctx, "GET", Url, nil)
+	getReq.Header = map[string][]string{
+		"X-SPELLAPI-USERID": {m.Author.ID},
+	}
+
+	resp, err := client.Do(getReq)
+	if err != nil {
+		beeline.AddField(ctx, "getSpellMetadataNames.Error", err)
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	metadataRaw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		beeline.AddField(ctx, "getSpellMetadataNames.Response.Error", err)
+		return "", err
+	}
+
+	beeline.AddField(ctx, "getSpellMetadataNames.Response.Raw", metadataRaw)
+	var arr []string
+	_ = json.Unmarshal(metadataRaw, &arr)
+
+	var metadata strings.Builder
+	metadata.WriteString("Found the following possible metadata names:\n")
+	for _, v := range arr {
+		metadata.WriteString(fmt.Sprintln(v))
+	}
+
+	return metadata.String(), nil
+
+}
+
+func getSpellMetadataValues(ctx context.Context, m *discordgo.Message) (string, error) {
+	ctx, span := beeline.StartSpan(ctx, "getSpellMetadataValues")
+	defer span.Send()
+
+	client := &http.Client{
+		Transport: hnynethttp.WrapRoundTripper(http.DefaultTransport),
+		Timeout:   time.Second * 20,
+	}
+	Url := fmt.Sprintf("%s/spellmetadata/%s", apiUrl, m.Content)
+	beeline.AddField(ctx, "getSpellMetadataValues.Url", Url)
+
+	getReq, _ := http.NewRequestWithContext(ctx, "GET", Url, nil)
+	getReq.Header = map[string][]string{
+		"X-SPELLAPI-USERID": {m.Author.ID},
+	}
+
+	resp, err := client.Do(getReq)
+	if err != nil {
+		beeline.AddField(ctx, "getSpellMetadataValues.Error", err)
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	metadataRaw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		beeline.AddField(ctx, "getSpellMetadataValues.Response.Error", err)
+		return "", err
+	}
+
+	beeline.AddField(ctx, "getSpellMetadataValues.Response.Raw", metadataRaw)
+	arr := make(map[string][]string)
+	_ = json.Unmarshal(metadataRaw, &arr)
+
+	var metadata strings.Builder
+	metadata.WriteString(fmt.Sprintf("Found the following possible metadata values for %s:\n", m.Content))
+	for _, v := range arr[m.Content] {
+		metadata.WriteString(fmt.Sprintln(v))
+	}
+
+	return metadata.String(), nil
 }
