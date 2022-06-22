@@ -15,17 +15,17 @@ spec:
         valueFrom:
           secretKeyRef:
             name: spellapi
-            key: spellapi-discord-DISCORD-TOKEN
+            key: spellapi-discord-discord-token
       - name: HONEYCOMB_KEY
         valueFrom:
           secretKeyRef:
             name: spellapi
-            key: spellapi-discord-HONEYCOMB-KEY
+            key: spellapi-discord-honeycomb-key
       - name: HONEYCOMB_DATASET
         valueFrom:
           secretKeyRef:
             name: spellapi
-            key: spellapi-discord-HONEYCOMB-DATASET
+            key: spellapi-discord-honeycomb-dataset
       - name: API_URL
         valueFrom:
           secretKeyRef:
