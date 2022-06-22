@@ -1,0 +1,42 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: spellapi-discord
+spec:
+  containers:
+    - name: spellapi-discord
+      image: halbarad.azurecr.io/go/spellapi-discord:{{ContainerVersion}}
+      volumeMounts:
+      - name: secrets-store
+        mountPath: "/mnt/secrets-store"
+        readOnly: true
+      env:
+      - name: DISCORD_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: spellapi
+            key: spellapi-discord-DISCORD-TOKEN
+      - name: HONEYCOMB_KEY
+        valueFrom:
+          secretKeyRef:
+            name: spellapi
+            key: spellapi-discord-HONEYCOMB-KEY
+      - name: HONEYCOMB_DATASET
+        valueFrom:
+          secretKeyRef:
+            name: spellapi
+            key: spellapi-discord-HONEYCOMB-DATASET
+      - name: API_URL
+        valueFrom:
+          secretKeyRef:
+            name: spellapi
+            key: spellapi-discord-api-url
+  volumes:
+    - name: secrets-store
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: azure-kvname
+        nodePublishSecretRef:                       # Only required when using service principal mode
+          name: secrets-store-creds
